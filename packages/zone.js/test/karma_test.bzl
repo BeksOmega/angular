@@ -14,6 +14,7 @@ def karma_test_prepare(name, env_srcs, env_deps, env_entry_point, test_srcs, tes
         sourcemap = "false",
         entry_point = env_entry_point,
         silent = True,
+        config_file = "//packages/zone.js:rollup.config.js",
         deps = [
             ":" + name + "_env",
             "@npm//@rollup/plugin-commonjs",

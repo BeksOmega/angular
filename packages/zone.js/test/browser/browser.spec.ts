@@ -867,8 +867,7 @@ describe('Zone', function () {
           }),
         );
 
-        // TODO: JiaLiPassion, need to find out why the test bundle is not `use strict`.
-        xit(
+        it(
           'event handler with null context should use event.target',
           ifEnvSupports(canPatchOnProperty(Document.prototype, 'onmousedown'), function () {
             const logs: string[] = [];
