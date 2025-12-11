@@ -38,21 +38,18 @@ describe('MultiMap', () => {
     expect(map.has('k')).toBeFalse();
   });
 
-  it('should iterate with forEach', () => {
+  it('should be iterable', () => {
     const map = new UniqueValueMultiKeyMap<string, string>();
 
     map.set('km', 'v1');
     map.set('km', 'v2');
     map.set('ks', 'v');
 
-    const items: string[][] = [];
-
-    map.forEach((v, k) => items.push([v, k]));
-    expect(items).toEqual([
-      ['v1', 'km'],
-      ['v2', 'km'],
-      ['v', 'ks'],
-    ]);
+    const items: string[] = [];
+    for (const item of map) {
+      items.push(item);
+    }
+    expect(items).toEqual(['v1', 'v2', 'v']);
   });
 
   it('should throw upon detecting duplicate values', () => {

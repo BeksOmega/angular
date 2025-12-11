@@ -307,9 +307,11 @@ export function reconcile<T, V>(
   }
 
   // - destroy items that were detached but never attached again.
-  detachedItems?.forEach((item) => {
-    liveCollection.destroy(item);
-  });
+  if (detachedItems !== undefined) {
+    for (const item of detachedItems) {
+      liveCollection.destroy(item);
+    }
+  }
 
   // report duplicate keys (dev mode only)
   if (ngDevMode) {
@@ -445,14 +447,14 @@ export class UniqueValueMultiKeyMap<K, V> {
     }
   }
 
-  forEach(cb: (v: V, k: K) => void) {
-    for (let [key, value] of this.kvMap) {
-      cb(value, key);
+  *[Symbol.iterator](): Iterator<V> {
+    for (let value of this.kvMap.values()) {
+      yield value;
       if (this._vMap !== undefined) {
         const vMap = this._vMap;
         while (vMap.has(value)) {
           value = vMap.get(value)!;
-          cb(value, key);
+          yield value;
         }
       }
     }
