@@ -142,35 +142,42 @@ export function reconcile<T, V>(
       }
 
       // compare from the end
-      // TODO(perf): do _all_ the matching from the end
-      const liveEndValue = liveCollection.at(liveEndIdx);
-      const newEndValue = newCollection[newEndIdx];
+      // THe `while` loop below is the inverse of the `while` loop above. The above `while` loop
+      // matches items from the beginning of the list, while the `while` loop below matches items
+      // from the end of the list. This is a performance optimization, as it reduces the number of
+      // items that need to be processed in the "slow path".
+      while (liveStartIdx <= liveEndIdx && liveStartIdx <= newEndIdx) {
+        const liveEndValue = liveCollection.at(liveEndIdx);
+        const newEndValue = newCollection[newEndIdx];
 
-      if (ngDevMode) {
-        recordDuplicateKeys(duplicateKeys!, trackByFn(newEndIdx, newEndValue), newEndIdx);
-      }
-
-      const isEndMatching = valuesMatching(
-        liveEndIdx,
-        liveEndValue,
-        newEndIdx,
-        newEndValue,
-        trackByFn,
-      );
-      if (isEndMatching !== 0) {
-        if (isEndMatching < 0) {
-          liveCollection.updateValue(liveEndIdx, newEndValue);
+        if (ngDevMode) {
+          recordDuplicateKeys(duplicateKeys!, trackByFn(newEndIdx, newEndValue), newEndIdx);
         }
-        liveEndIdx--;
-        newEndIdx--;
+
+        const isEndMatching =
+            valuesMatching(liveEndIdx, liveEndValue, newEndIdx, newEndValue, trackByFn);
+        if (isEndMatching !== 0) {
+          if (isEndMatching < 0) {
+            liveCollection.updateValue(liveEndIdx, newEndValue);
+          }
+          liveEndIdx--;
+          newEndIdx--;
+        } else {
+          break;
+        }
+      }
+      // if we matched all the items, we are done with this loop.
+      if (liveStartIdx > liveEndIdx || liveStartIdx > newEndIdx) {
         continue;
       }
 
       // Detect swap and moves:
       const liveStartKey = trackByFn(liveStartIdx, liveStartValue);
+      const liveEndValue = liveCollection.at(liveEndIdx);
       const liveEndKey = trackByFn(liveEndIdx, liveEndValue);
       const newStartKey = trackByFn(liveStartIdx, newStartValue);
       if (Object.is(newStartKey, liveEndKey)) {
+        const newEndValue = newCollection[newEndIdx];
         const newEndKey = trackByFn(newEndIdx, newEndValue);
         // detect swap on both ends;
         if (Object.is(newEndKey, liveStartKey)) {
