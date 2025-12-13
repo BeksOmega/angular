@@ -221,11 +221,17 @@ export const DATE_PIPE_DEFAULT_OPTIONS = new InjectionToken<DatePipeConfig>(
   standalone: true,
 })
 export class DatePipe implements PipeTransform {
+  private readonly defaultTimezone: string | undefined;
+  private readonly defaultFormat: string;
+
   constructor(
     @Inject(LOCALE_ID) private locale: string,
-    @Inject(DATE_PIPE_DEFAULT_TIMEZONE) @Optional() private defaultTimezone?: string | null,
-    @Inject(DATE_PIPE_DEFAULT_OPTIONS) @Optional() private defaultOptions?: DatePipeConfig | null,
-  ) {}
+    @Inject(DATE_PIPE_DEFAULT_TIMEZONE) @Optional() defaultTimezone?: string | null,
+    @Inject(DATE_PIPE_DEFAULT_OPTIONS) @Optional() defaultOptions?: DatePipeConfig | null,
+  ) {
+    this.defaultTimezone = defaultOptions?.timezone ?? defaultTimezone ?? undefined;
+    this.defaultFormat = defaultOptions?.dateFormat ?? DEFAULT_DATE_FORMAT;
+  }
 
   /**
    * @param value The date expression: a `Date` object,  a number
@@ -268,9 +274,8 @@ export class DatePipe implements PipeTransform {
     if (value == null || value === '' || value !== value) return null;
 
     try {
-      const _format = format ?? this.defaultOptions?.dateFormat ?? DEFAULT_DATE_FORMAT;
-      const _timezone =
-        timezone ?? this.defaultOptions?.timezone ?? this.defaultTimezone ?? undefined;
+      const _format = format ?? this.defaultFormat;
+      const _timezone = timezone ?? this.defaultTimezone;
       return formatDate(value, _format, locale || this.locale, _timezone);
     } catch (error) {
       throw invalidPipeArgumentError(DatePipe, (error as Error).message);
