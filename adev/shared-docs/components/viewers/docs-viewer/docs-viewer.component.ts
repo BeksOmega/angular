@@ -115,9 +115,7 @@ export class DocViewer implements OnChanges {
     if (isBrowser) {
       // First we setup event listeners on the HTML we just loaded.
       // We want to do this before things like the example viewers are loaded.
-      this.setupAnchorListeners(contentContainer);
-      // Rewrite relative anchors (hrefs starting with `#`) because relative hrefs are relative to the base URL, which is '/'
-      this.rewriteRelativeAnchors(contentContainer);
+      this.setupAnchors(contentContainer);
       // In case when content contains placeholders for executable examples, create ExampleViewer components.
       await this.loadExamples();
       // In case when content contains static code snippets, then create buttons
@@ -304,46 +302,55 @@ export class DocViewer implements OnChanges {
     return componentRef;
   }
 
-  private setupAnchorListeners(element: HTMLElement): void {
-    element.querySelectorAll(`a[href]`).forEach((anchor) => {
-      // Get the target element's ID from the href attribute
-      const url = new URL((anchor as HTMLAnchorElement).href);
-      const isExternalLink = url.origin !== this.document.location.origin;
-      if (isExternalLink) {
-        return;
+  /**
+   * Sets up listeners for all anchor elements in the doc viewer.
+   *
+   * This method performs the following tasks:
+   * 1. Rewrites relative anchors (hrefs starting with `#`) to be absolute, preventing them from
+   *    being interpreted as relative to the base URL.
+   * 2. Sets up a click listener on each anchor to handle navigation via the Angular Router.
+   *
+   * By combining these tasks into a single loop, we minimize DOM queries and iterations,
+   * improving performance.
+   */
+  private setupAnchors(element: HTMLElement): void {
+    const anchors = Array.from(element.querySelectorAll<HTMLAnchorElement>('a[href]'));
+
+    for (const anchor of anchors) {
+      // Rewrite relative anchors
+      if (anchor.getAttribute('href')?.startsWith('#') && !anchor.hasAttribute('download')) {
+        const url = new URL(anchor.href);
+        anchor.href = this.location.path() + url.hash;
       }
 
-      fromEvent(anchor, 'click')
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe((e) => {
-          const closestAnchor = (e.target as Element).closest('a');
-          if (closestAnchor?.target && closestAnchor.target !== 'self') {
-            return;
-          }
+      // Set up click listener
+      const url = new URL(anchor.href);
+      if (url.origin === this.document.location.origin) {
+        fromEvent(anchor, 'click')
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe((event) => {
+            const closestAnchor = (event.target as Element).closest('a');
+            if (closestAnchor?.target && closestAnchor.target !== 'self') {
+              return;
+            }
 
-          const hrefAttr = closestAnchor?.getAttribute?.('href');
-          if (!hrefAttr) {
-            return;
-          }
+            const hrefAttr = closestAnchor?.getAttribute('href');
+            if (!hrefAttr) {
+              return;
+            }
 
-          let relativeUrl: string;
-          if (hrefAttr.startsWith('http')) {
-            // Url is absolute but we're targeting the same domain
-            const url = new URL(hrefAttr);
-            relativeUrl = `${url.pathname}${url.hash}${url.search}`;
-          } else {
-            relativeUrl = hrefAttr;
-          }
+            let relativeUrl: string;
+            if (hrefAttr.startsWith('http')) {
+              // URL is absolute but we're targeting the same domain
+              const url = new URL(hrefAttr);
+              relativeUrl = `${url.pathname}${url.hash}${url.search}`;
+            } else {
+              relativeUrl = hrefAttr;
+            }
 
-          handleHrefClickEventWithRouter(e, this.router, relativeUrl);
-        });
-    });
-  }
-
-  private rewriteRelativeAnchors(element: HTMLElement) {
-    for (const anchor of Array.from(element.querySelectorAll(`a[href^="#"]:not(a[download])`))) {
-      const url = new URL((anchor as HTMLAnchorElement).href);
-      (anchor as HTMLAnchorElement).href = this.location.path() + url.hash;
+            handleHrefClickEventWithRouter(event, this.router, relativeUrl);
+          });
+      }
     }
   }
 }
